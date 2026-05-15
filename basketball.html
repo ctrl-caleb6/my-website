@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Shoot Your Shot – Caleb's Game</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --orange: #E87722;
+      --dark: #0d0d0d;
+      --court: #C68642;
+      --rim: #E04A00;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--dark);
+      color: #f0e8d8;
+      font-family: 'DM Sans', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 2rem;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .back-btn {
+      text-decoration: none;
+      color: #888;
+      font-size: .85rem;
+      letter-spacing: .08em;
+      transition: color .2s;
+    }
+    .back-btn:hover { color: var(--orange); }
+    .game-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      color: var(--orange);
+      letter-spacing: .05em;
+    }
+    .score-display {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      letter-spacing: .05em;
+    }
+    .score-display span { color: var(--orange); }
+
+    /* CANVAS AREA */
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      max-width: 800px;
+      cursor: default;
+    }
+
+    /* CONTROLS */
+    .controls {
+      width: 100%;
+      max-width: 800px;
+      padding: 1.5rem 2rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    .meter-row {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .meter-label {
+      font-size: .72rem;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: #888;
+      width: 70px;
+      flex-shrink: 0;
+    }
+
+    .meter-track {
+      flex: 1;
+      height: 18px;
+      background: #1c1c1c;
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #2a2a2a;
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: none;
+      will-change: width;
+    }
+
+    .aim-fill {
+      background: linear-gradient(90deg, #2a7fff, #00c8ff);
+      width: 50%;
+    }
+
+    .power-fill {
+      background: linear-gradient(90deg, #2fc36e, #ffdd00, #ff4400);
+      width: 0%;
+    }
+
+    /* sweet spot indicator */
+    .sweet-zone {
+      position: absolute;
+      top: 0; bottom: 0;
+      background: rgba(255,255,255,.15);
+      border-left: 1px solid rgba(255,255,255,.4);
+      border-right: 1px solid rgba(255,255,255,.4);
+    }
+
+    .meter-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.3rem;
+      width: 50px;
+      text-align: right;
+      color: var(--orange);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: .9rem 1rem;
+      border: none;
+      border-radius: 3px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: .06em;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .action-btn:active { transform: scale(.97); }
+
+    #aimBtn {
+      background: #1a3a6e;
+      color: #7ec8ff;
+      border: 1px solid #2a5aaa;
+    }
+    #aimBtn.active { background: #0a2a5e; box-shadow: 0 0 20px #2a7fff66; }
+
+    #powerBtn {
+      background: #1a4a2a;
+      color: #7effa0;
+      border: 1px solid #2a7a3a;
+    }
+    #powerBtn.active { background: #0a3a1a; box-shadow: 0 0 20px #2fc36e66; }
+
+    #shootBtn {
+      background: var(--orange);
+      color: white;
+      border: 1px solid #c05500;
+      box-shadow: 0 4px 20px rgba(232,119,34,.35);
+    }
+    #shootBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .msg-bar {
+      height: 2rem;
+      text-align: center;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: .08em;
+      color: var(--orange);
+      animation: popIn .3s ease;
+    }
+    @keyframes popIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+
+    .streak { color: #ffd700; }
+    .miss { color: #ff4455; }
+
+    .instructions {
+      font-size: .78rem;
+      color: #555;
+      text-align: center;
+      padding: 0 2rem .5rem;
+      letter-spacing: .03em;
+    }
+
+    footer {
+      width: 100%;
+      text-align: center;
+      padding: 1.5rem;
+      font-size: .72rem;
+      color: #333;
+      border-top: 1px solid #1a1a1a;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="back-btn" href="index.html">← Back to Caleb's Page</a>
+  <div class="game-title">Shoot Your Shot 🏀</div>
+  <div class="score-display">Score: <span id="scoreNum">0</span></div>
+</header>
+
+<canvas id="gameCanvas" width="800" height="480"></canvas>
+
+<div class="controls">
+  <div class="meter-row">
+    <span class="meter-label">AIM</span>
+    <div class="meter-track" id="aimTrack">
+      <div class="sweet-zone" id="sweetZone"></div>
+      <div class="meter-fill aim-fill" id="aimFill"></div>
+    </div>
+    <span class="meter-value" id="aimVal">50°</span>
+  </div>
+  <div class="meter-row">
+    <span class="meter-label">POWER</span>
+    <div class="meter-track">
+      <div class="meter-fill power-fill" id="powerFill"></div>
+    </div>
+    <span class="meter-value" id="powerVal">0%</span>
+  </div>
+  <div class="btn-row">
+    <button class="action-btn" id="aimBtn">🎯 AIM</button>
+    <button class="action-btn" id="powerBtn">💪 POWER</button>
+    <button class="action-btn" id="shootBtn" disabled>🏀 SHOOT</button>
+  </div>
+  <div class="msg-bar" id="msgBar"></div>
+  <p class="instructions">Hold AIM to stop the aim meter on the sweet spot · Hold POWER to charge · Release to set · Then SHOOT</p>
+</div>
+
+<footer>Copyright © 2026 Caleb Pena</footer>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// ── STATE ──
+let score = 0, streak = 0;
+let aimPct = 50;          // 0-100  (50 = straight center)
+let powerPct = 0;         // 0-100
+let aimDir = 1, aimSpeed = 1.6;
+let powerDir = 1, powerSpeed = 1.0;
+let holdingAim = false, holdingPower = false;
+let aimLocked = false, powerLocked = false;
+let shooting = false;
+
+// Ball physics
+let ball = { x:0, y:0, vx:0, vy:0, r:14, visible:false };
+
+// Hoop
+let hoop = { x:600, y:160, w:70, netPhase:0 };
+let hoopDir = 1, hoopSpeed = 0.9;
+
+// Reset ball position
+function resetBall() {
+  ball.x = 100; ball.y = 390;
+  ball.vx = 0; ball.vy = 0;
+  ball.visible = true;
+  shooting = false;
+}
+resetBall();
+
+// ── DRAWING ──
+function drawCourt() {
+  // Sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  sky.addColorStop(0, '#0d0d18');
+  sky.addColorStop(.6, '#121620');
+  sky.addColorStop(1, '#1a0f05');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Court floor
+  const floor = ctx.createLinearGradient(0, 400, 0, canvas.height);
+  floor.addColorStop(0, '#8B5A2B');
+  floor.addColorStop(1, '#5C3A1A');
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, 400, canvas.width, 80);
+
+  // Court lines
+  ctx.strokeStyle = 'rgba(255,220,140,.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 400); ctx.lineTo(canvas.width, 400);
+  ctx.stroke();
+
+  // Three-point arc
+  ctx.strokeStyle = 'rgba(255,220,140,.08)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(80, 440, 280, -0.4, 0, false);
+  ctx.stroke();
+}
+
+function drawBackboard() {
+  const bx = hoop.x + hoop.w / 2 + 10;
+  // Pole
+  ctx.fillStyle = '#333';
+  ctx.fillRect(bx + 20, hoop.y - 20, 8, 260);
+  // Board
+  ctx.fillStyle = '#ddd';
+  ctx.fillRect(bx, hoop.y - 55, 55, 42);
+  ctx.strokeStyle = 'rgba(255,80,0,.7)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bx + 15, hoop.y - 46, 25, 28);
+}
+
+function drawHoop() {
+  // Rim
+  ctx.strokeStyle = '#E04A00';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(hoop.x, hoop.y);
+  ctx.lineTo(hoop.x + hoop.w, hoop.y);
+  ctx.stroke();
+
+  // Net (wavy)
+  const segments = 8;
+  const segW = hoop.w / segments;
+  ctx.strokeStyle = 'rgba(240,230,210,.5)';
+  ctx.lineWidth = 1.5;
+
+  for (let i = 0; i <= segments; i++) {
+    const topX = hoop.x + i * segW;
+    ctx.beginPath();
+    ctx.moveTo(topX, hoop.y);
+    for (let j = 0; j <= 6; j++) {
+      const t = j / 6;
+      const nx = topX + (i < segments ? Math.sin(hoop.netPhase + i * .8 + t * 2) * 5 * t : 0);
+      const ny = hoop.y + t * 55;
+      ctx.lineTo(nx, ny);
+    }
+    ctx.stroke();
+  }
+
+  // Horizontal net lines
+  for (let j = 1; j <= 5; j++) {
+    const t = j / 6;
+    ctx.beginPath();
+    const y = hoop.y + t * 55;
+    for (let i = 0; i <= segments; i++) {
+      const topX = hoop.x + i * segW;
+      const nx = topX + Math.sin(hoop.netPhase + i * .8 + t * 2) * 5 * t;
+      if (i === 0) ctx.moveTo(nx, y); else ctx.lineTo(nx, y);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawBall() {
+  if (!ball.visible) return;
+  // Shadow
+  const shadowY = 408;
+  const shadowScale = Math.max(0.1, 1 - (shadowY - ball.y) / 400);
+  ctx.beginPath();
+  ctx.ellipse(ball.x, shadowY, ball.r * shadowScale * 1.5, ball.r * .3 * shadowScale, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,.4)';
+  ctx.fill();
+
+  // Ball
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  const grad = ctx.createRadialGradient(ball.x - 4, ball.y - 4, 1, ball.x, ball.y, ball.r);
+  grad.addColorStop(0, '#ff9a3c');
+  grad.addColorStop(.6, '#e87722');
+  grad.addColorStop(1, '#7a3a00');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Lines
+  ctx.strokeStyle = '#5a2a00';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(ball.x - ball.r, ball.y); ctx.lineTo(ball.x + ball.r, ball.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI, false);
+  ctx.stroke();
+}
+
+function drawAimLine() {
+  if (shooting || aimLocked) return;
+  const angle = aimPct / 100 * 70 + 10; // 10°-80° from horizontal
+  const rad = (angle * Math.PI) / 180;
+  ctx.strokeStyle = 'rgba(100,180,255,.25)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.moveTo(ball.x, ball.y);
+  ctx.lineTo(ball.x + Math.cos(rad) * 100, ball.y - Math.sin(rad) * 100);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ── SCORING ──
+let flashMsg = '', flashTimer = 0, flashClass = '';
+
+function showMsg(msg, cls) {
+  flashMsg = msg; flashClass = cls; flashTimer = 120;
+  const el = document.getElementById('msgBar');
+  el.textContent = msg;
+  el.className = 'msg-bar ' + cls;
+}
+
+// ── GAME LOOP ──
+let lastTime = 0;
+function gameLoop(ts) {
+  const dt = Math.min((ts - lastTime) / 16, 3);
+  lastTime = ts;
+
+  // Move hoop
+  hoop.y += hoopDir * hoopSpeed * dt;
+  if (hoop.y < 100 || hoop.y > 220) hoopDir *= -1;
+  hoop.netPhase += 0.04 * dt;
+
+  // Oscillate meters
+  if (holdingAim && !aimLocked) {
+    aimPct += aimDir * aimSpeed * dt;
+    if (aimPct >= 100 || aimPct <= 0) aimDir *= -1;
+    aimPct = Math.max(0, Math.min(100, aimPct));
+  }
+
+  if (holdingPower && !powerLocked) {
+    powerPct += powerDir * powerSpeed * dt;
+    if (powerPct >= 100 || powerPct <= 0) powerDir *= -1;
+    powerPct = Math.max(0, Math.min(100, powerPct));
+  }
+
+  // Update aim meter UI
+  document.getElementById('aimFill').style.width = aimPct + '%';
+  document.getElementById('aimVal').textContent = Math.round(aimPct / 100 * 70 + 10) + '°';
+  document.getElementById('powerFill').style.width = powerPct + '%';
+  document.getElementById('powerVal').textContent = Math.round(powerPct) + '%';
+
+  // Ball physics
+  if (shooting) {
+    ball.vy += 0.42 * dt;   // gravity
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+
+    // Check score: ball passes through hoop zone
+    const rimLeft = hoop.x + 5;
+    const rimRight = hoop.x + hoop.w - 5;
+    if (
+      ball.x > rimLeft && ball.x < rimRight &&
+      ball.y > hoop.y && ball.y < hoop.y + 20 &&
+      ball.vy > 0
+    ) {
+      const pts = powerPct >= 85 ? 3 : 2;
+      score += pts;
+      streak++;
+      document.getElementById('scoreNum').textContent = score;
+      if (streak >= 3) showMsg(`🔥 ${streak}x STREAK! +${pts}`, 'streak');
+      else showMsg(pts === 3 ? `🏆 THREE! +3` : `NICE! +2`, '');
+      resetAll();
+    }
+
+    // Miss: ball out of bounds or hits floor
+    if (ball.x > canvas.width + 50 || ball.y > canvas.height + 50 || ball.x < -50) {
+      streak = 0;
+      showMsg('MISS 😬', 'miss');
+      resetAll();
+    }
+  }
+
+  // ── DRAW ──
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawCourt();
+  drawBackboard();
+  drawHoop();
+  drawAimLine();
+  drawBall();
+
+  requestAnimationFrame(gameLoop);
+}
+
+function resetAll() {
+  setTimeout(() => {
+    resetBall();
+    aimLocked = false;
+    powerLocked = false;
+    powerPct = 0;
+    holdingAim = false;
+    holdingPower = false;
+    aimDir = 1;
+    powerDir = 1;
+    document.getElementById('aimBtn').classList.remove('active');
+    document.getElementById('powerBtn').classList.remove('active');
+    document.getElementById('shootBtn').disabled = true;
+    // Increase difficulty
+    aimSpeed = 1.6 + Math.min(score * 0.05, 2.5);
+    powerSpeed = 1.0 + Math.min(score * 0.03, 2);
+  }, 600);
+}
+
+// ── SWEET ZONE (center of aim track ~45-55%) ──
+const sweetZone = document.getElementById('sweetZone');
+// Aim sweet zone: 40-60% of track = heading toward hoop
+sweetZone.style.left = '38%';
+sweetZone.style.width = '24%';
+
+// ── BUTTON CONTROLS ──
+const aimBtn = document.getElementById('aimBtn');
+const powerBtn = document.getElementById('powerBtn');
+const shootBtn = document.getElementById('shootBtn');
+
+// AIM: hold to oscillate, release to lock
+function startAim() {
+  if (aimLocked || shooting) return;
+  holdingAim = true;
+  aimBtn.classList.add('active');
+}
+function stopAim() {
+  if (!holdingAim || aimLocked) return;
+  holdingAim = false;
+  aimLocked = true;
+  aimBtn.classList.remove('active');
+}
+
+aimBtn.addEventListener('mousedown', startAim);
+aimBtn.addEventListener('mouseup', stopAim);
+aimBtn.addEventListener('mouseleave', stopAim);
+aimBtn.addEventListener('touchstart', e => { e.preventDefault(); startAim(); });
+aimBtn.addEventListener('touchend', e => { e.preventDefault(); stopAim(); });
+
+// POWER: hold to charge, release to lock
+function startPower() {
+  if (!aimLocked || powerLocked || shooting) return;
+  holdingPower = true;
+  powerBtn.classList.add('active');
+  powerDir = 1;
+}
+function stopPower() {
+  if (!holdingPower || powerLocked) return;
+  holdingPower = false;
+  powerLocked = true;
+  powerBtn.classList.remove('active');
+  shootBtn.disabled = false;
+}
+
+powerBtn.addEventListener('mousedown', startPower);
+powerBtn.addEventListener('mouseup', stopPower);
+powerBtn.addEventListener('mouseleave', stopPower);
+powerBtn.addEventListener('touchstart', e => { e.preventDefault(); startPower(); });
+powerBtn.addEventListener('touchend', e => { e.preventDefault(); stopPower(); });
+
+// SHOOT
+shootBtn.addEventListener('click', () => {
+  if (!aimLocked || !powerLocked || shooting) return;
+  const angle = aimPct / 100 * 70 + 10; // 10°-80°
+  const rad = angle * Math.PI / 180;
+  const speed = 4 + powerPct * 0.14;
+
+  ball.vx = Math.cos(rad) * speed;
+  ball.vy = -Math.sin(rad) * speed;
+  shooting = true;
+  shootBtn.disabled = true;
+
+  // Shake canvas slightly
+  canvas.style.transition = 'transform .1s';
+  canvas.style.transform = 'translateX(-3px)';
+  setTimeout(() => canvas.style.transform = '', 150);
+});
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
